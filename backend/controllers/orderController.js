@@ -13,7 +13,7 @@ const getOrders = async (req, res) => {
 const createOrder = async (req, res) => {
     try {
         const { customer_id, items } = req.body;
-        // Basic example without full transaction handling for simplicity
+        
         // 1. Create order header
         const orderRes = await executeQuery(
             `INSERT INTO orders (customer_id, status, total_amount) VALUES (:customer_id, 'PENDING', 0)`,
@@ -21,21 +21,50 @@ const createOrder = async (req, res) => {
         );
         
         const newOrderId = orderRes.lastInsertRowid;
+        let orderTotal = 0;
         
-        // 2. Insert items
+        // 2. Insert items and update stock
         for (const item of items) {
-            await executeQuery(
-                `INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) 
-                 VALUES (:order_id, :product_id, :quantity, :unit_price, :subtotal)`,
-                {
-                    order_id: newOrderId,
-                    product_id: item.product_id || item.PRODUCT_ID,
-                    quantity: item.quantity,
-                    unit_price: item.price || item.PRICE,
-                    subtotal: item.quantity * (item.price || item.PRICE)
-                }
-            );
+            const prodId = item.product_id || item.PRODUCT_ID || item.id;
+            const quantity = parseInt(item.quantity) || 1;
+            
+            // Fetch correct price directly from DB to prevent tampered payloads
+            const productQuery = await executeQuery(`SELECT price, stock_quantity FROM products WHERE product_id = :prodId`, { prodId });
+            
+            if (productQuery.rows && productQuery.rows.length > 0) {
+                const product = productQuery.rows[0];
+                const unit_price = parseFloat(product.price) || 0;
+                const subtotal = quantity * unit_price;
+                
+                orderTotal += subtotal;
+
+                await executeQuery(
+                    `INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) 
+                     VALUES (:order_id, :product_id, :quantity, :unit_price, :subtotal)`,
+                    {
+                        order_id: newOrderId,
+                        product_id: prodId,
+                        quantity: quantity,
+                        unit_price: unit_price,
+                        subtotal: subtotal
+                    }
+                );
+
+                // Decrease stock quantity
+                await executeQuery(
+                    `UPDATE products SET stock_quantity = stock_quantity - :quantity WHERE product_id = :prodId`,
+                    { quantity: quantity, prodId: prodId }
+                );
+            } else {
+                console.warn(`Product ID ${prodId} not found during order creation.`);
+            }
         }
+        
+        // 3. Update order with accurate total
+        await executeQuery(
+            `UPDATE orders SET total_amount = :total WHERE order_id = :orderId`,
+            { total: orderTotal, orderId: newOrderId }
+        );
 
         res.status(201).json({ message: 'Order created successfully', orderId: newOrderId });
     } catch (err) {
