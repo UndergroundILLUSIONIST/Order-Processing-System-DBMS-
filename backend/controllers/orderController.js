@@ -16,12 +16,11 @@ const createOrder = async (req, res) => {
         // Basic example without full transaction handling for simplicity
         // 1. Create order header
         const orderRes = await executeQuery(
-            `INSERT INTO orders (customer_id, status, total_amount) VALUES (:customer_id, 'PENDING', 0) RETURNING order_id INTO :order_id`,
-            { customer_id, order_id: { dir: 3003 } }, // 3003 = BIND_OUT
-            { autoCommit: false }
+            `INSERT INTO orders (customer_id, status, total_amount) VALUES (:customer_id, 'PENDING', 0)`,
+            { customer_id }
         );
         
-        const newOrderId = orderRes.outBinds.order_id[0];
+        const newOrderId = orderRes.lastInsertRowid;
         
         // 2. Insert items
         for (const item of items) {
@@ -30,20 +29,13 @@ const createOrder = async (req, res) => {
                  VALUES (:order_id, :product_id, :quantity, :unit_price, :subtotal)`,
                 {
                     order_id: newOrderId,
-                    product_id: item.product_id,
+                    product_id: item.product_id || item.PRODUCT_ID,
                     quantity: item.quantity,
-                    unit_price: item.unit_price,
-                    subtotal: item.quantity * item.unit_price
-                },
-                { autoCommit: false }
+                    unit_price: item.price || item.PRICE,
+                    subtotal: item.quantity * (item.price || item.PRICE)
+                }
             );
         }
-
-        // Commit transaction
-        const { getConnection } = require('../config/db');
-        const connection = await getConnection();
-        await connection.commit();
-        await connection.close();
 
         res.status(201).json({ message: 'Order created successfully', orderId: newOrderId });
     } catch (err) {
@@ -55,7 +47,7 @@ const createOrder = async (req, res) => {
 const approveOrder = async (req, res) => {
     try {
         const { id } = req.params;
-        await executeQuery(`BEGIN prc_approve_order(:id); END;`, { id }, { autoCommit: true });
+        await executeQuery(`UPDATE orders SET status = 'APPROVED' WHERE order_id = :id`, { id });
         res.json({ message: 'Order approved' });
     } catch (err) {
         console.error(err);
