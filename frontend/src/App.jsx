@@ -24,39 +24,33 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     return children;
 };
 
+const Layout = ({ children }) => {
+    return (
+        <div className="app-container">
+            <Navbar />
+            <div className="main-content">
+                {children}
+            </div>
+        </div>
+    );
+};
+
+import Cart from './pages/Cart';
+import Settings from './pages/Settings';
+
 function App() {
     return (
-        <Router>
-            <Navbar />
-            <div className="container">
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    
-                    <Route path="/" element={
-                        <ProtectedRoute>
-                            <Dashboard />
-                        </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/products" element={
-                        <ProtectedRoute>
-                            <Products />
-                        </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/orders" element={
-                        <ProtectedRoute>
-                            <Orders />
-                        </ProtectedRoute>
-                    } />
-                    
-                    <Route path="/reports" element={
-                        <ProtectedRoute requireAdmin={true}>
-                            <Reports />
-                        </ProtectedRoute>
-                    } />
-                </Routes>
-            </div>
+        <Router basename="/Order-Processing-System-DBMS-/">
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                
+                <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+                <Route path="/products" element={<ProtectedRoute><Layout><Products /></Layout></ProtectedRoute>} />
+                <Route path="/cart" element={<ProtectedRoute><Layout><Cart /></Layout></ProtectedRoute>} />
+                <Route path="/orders" element={<ProtectedRoute><Layout><Orders /></Layout></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute requireAdmin={true}><Layout><Reports /></Layout></ProtectedRoute>} />
+            </Routes>
         </Router>
     );
 }

@@ -17,7 +17,7 @@ const createOrder = async (req, res) => {
         // 1. Create order header
         const orderRes = await executeQuery(
             `INSERT INTO orders (customer_id, status, total_amount) VALUES (:customer_id, 'PENDING', 0) RETURNING order_id INTO :order_id`,
-            { customer_id, order_id: { type: require('oracledb').NUMBER, dir: require('oracledb').BIND_OUT } },
+            { customer_id, order_id: { dir: 3003 } }, // 3003 = BIND_OUT
             { autoCommit: false }
         );
         
@@ -40,7 +40,8 @@ const createOrder = async (req, res) => {
         }
 
         // Commit transaction
-        const connection = await require('oracledb').getConnection();
+        const { getConnection } = require('../config/db');
+        const connection = await getConnection();
         await connection.commit();
         await connection.close();
 

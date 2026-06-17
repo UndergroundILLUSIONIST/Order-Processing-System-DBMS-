@@ -1,9 +1,11 @@
 import { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { CheckCircle, Filter } from 'lucide-react';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
+    const [filter, setFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
     const { user } = useContext(AuthContext);
 
@@ -31,16 +33,36 @@ const Orders = () => {
         }
     };
 
+    const filteredOrders = orders.filter(o => {
+        if (filter === 'ALL') return true;
+        return (o.STATUS || o.status) === filter;
+    });
+
     if (loading) return <div>Loading...</div>;
 
     return (
         <div>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <h1>Orders Management</h1>
-                <button className="btn">Create New Order</button>
+            <div className="flex-between">
+                <div>
+                    <h1>Orders Management</h1>
+                    <p style={{color: 'var(--text-muted)', margin: 0}}>Review and process customer orders.</p>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <Filter size={18} color="var(--text-muted)" />
+                    <select 
+                        className="form-control" 
+                        style={{width: 'auto', padding: '0.4rem 1rem'}}
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                    >
+                        <option value="ALL">All Orders</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="APPROVED">Approved</option>
+                    </select>
+                </div>
             </div>
             
-            <div className="card">
+            <div className="glass-panel table-container">
                 <table>
                     <thead>
                         <tr>
@@ -52,40 +74,39 @@ const Orders = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {orders.map(o => (
-                            <tr key={o.ORDER_ID || o.order_id}>
-                                <td>{o.ORDER_ID || o.order_id}</td>
-                                <td>{o.CUSTOMER_ID || o.customer_id}</td>
-                                <td>
-                                    <span style={{
-                                        padding: '4px 8px', 
-                                        borderRadius: '4px',
-                                        backgroundColor: (o.STATUS || o.status) === 'PENDING' ? '#ffc107' : '#28a745',
-                                        color: (o.STATUS || o.status) === 'PENDING' ? '#000' : '#fff',
-                                        fontSize: '0.8rem'
-                                    }}>
-                                        {o.STATUS || o.status}
-                                    </span>
-                                </td>
-                                <td>${o.TOTAL_AMOUNT || o.total_amount}</td>
-                                {user?.role === 'ADMIN' && (
+                        {filteredOrders.map(o => {
+                            const status = o.STATUS || o.status;
+                            return (
+                                <tr key={o.ORDER_ID || o.order_id}>
+                                    <td style={{color: 'var(--text-muted)'}}>#{o.ORDER_ID || o.order_id}</td>
+                                    <td>{o.CUSTOMER_ID || o.customer_id}</td>
                                     <td>
-                                        {(o.STATUS || o.status) === 'PENDING' && (
-                                            <button 
-                                                className="btn" 
-                                                style={{padding: '0.25rem 0.5rem', fontSize: '0.8rem'}}
-                                                onClick={() => approveOrder(o.ORDER_ID || o.order_id)}
-                                            >
-                                                Approve
-                                            </button>
-                                        )}
+                                        <span className={`badge ${status === 'PENDING' ? 'badge-warning' : 'badge-success'}`}>
+                                            {status}
+                                        </span>
                                     </td>
-                                )}
-                            </tr>
-                        ))}
-                        {orders.length === 0 && (
+                                    <td style={{fontWeight: 600}}>${o.TOTAL_AMOUNT || o.total_amount}</td>
+                                    {user?.role === 'ADMIN' && (
+                                        <td>
+                                            {status === 'PENDING' ? (
+                                                <button 
+                                                    className="btn" 
+                                                    style={{padding: '0.4rem 0.8rem', fontSize: '0.75rem'}}
+                                                    onClick={() => approveOrder(o.ORDER_ID || o.order_id)}
+                                                >
+                                                    <CheckCircle size={14} /> Approve
+                                                </button>
+                                            ) : (
+                                                <span style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Processed</span>
+                                            )}
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
+                        {filteredOrders.length === 0 && (
                             <tr>
-                                <td colSpan="5" style={{textAlign: 'center'}}>No orders found</td>
+                                <td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}>No orders found matching filter</td>
                             </tr>
                         )}
                     </tbody>
