@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -40,7 +40,7 @@ import Settings from './pages/Settings';
 
 function App() {
     return (
-        <Router basename="/Order-Processing-System-DBMS-/">
+        <Router>
             <Routes>
                 <Route path="/login" element={<Login />} />
                 
